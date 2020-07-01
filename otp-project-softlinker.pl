@@ -235,9 +235,11 @@ foreach my $seq_type (@seq_types){
       $wgs_analysis_types{"sv_results"}="SOPHIA_";
       $wgs_analysis_types{"indel_results"}="platypus_indel_";
       $wgs_analysis_types{"cnv_results"}="ACEseq_";
+      $wgs_analysis_types{"mutational_signatures_results"}="YAPSA_";
+
 
       foreach my $wgs_analysis_type (keys %wgs_analysis_types){
-        print "\n\# Looking for $wgs_analysis_type for $pid WGS...\n";
+        print "\n\# Looking for $wgs_analysis_type for $pid WGS... ($project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type)\n";
         if (-e "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type"){
           print "\n\# SOFTLINKG SNV FILES FOR $pid\n";
           my @comparisons = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type/paired/`;

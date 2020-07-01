@@ -25,6 +25,7 @@ A perl script to create a softlink structure for analysing data processed by the
 
 We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags).
 
+ - v1.1.0: added support for mutational signature workflow (YAPSA)
  - v1.0.0: first working version (equivalent to v0.7) 
 
 ## Authors
