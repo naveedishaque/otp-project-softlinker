@@ -9,7 +9,7 @@ A perl script to create a softlink structure for analysing data processed by the
 
 ## conda setup
 
-`conda install perl=5.26.2 perl-datetime=1.42`
+`conda install perl=5.26.2 perl-datetime=1.42 perl-getopt-long=2.50`
 
 ## Usage
 
