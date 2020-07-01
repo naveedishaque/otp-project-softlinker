@@ -2,7 +2,7 @@
 
 ################################################
 #                                              
-# SCRIPT: project_softlinker.pl
+# SCRIPT: otp-project-softlinker.pl
 #
 ################################################
 #
@@ -17,7 +17,7 @@
 #
 ################################################
 #
-# NISTORY
+# HISTORY
 #
 # VERSION: 0.1b
 # 11 JULY 2016
@@ -34,6 +34,25 @@
 # Links to QC for everything else
 # process input options
 #
+# VERSION: 0.4
+# Full: processing of WGS, WES, RNAseq (no support for older OTP alignments)
+# Also checks for bams in any WGS and WES subfolder and links to them [slow! perhaps make this an option...]
+# Links to all DNAseq analysis subtypes which are defined in %wgs_analysis_types (key = analysis type, value = preffix of softlinked folder)
+# Links to QC for everything else
+# process input options
+#
+# VERSION: 0.5
+# Best left forgotten.
+# Tried to mimic the Roddy ACEseq folder naming (ACEseq_tumor), but this causes problems with multiple control types
+#
+# VERSION: 0.6
+# Support for individual PIDs
+#
+# VERSION: 0.7
+# Makes additional default folder for otp QC output
+#
+# VERSION: 1.0.0
+# First stable release (based on 0.7)
 ################################################
 
 use strict;
@@ -43,14 +62,17 @@ use Getopt::Long qw(GetOptions);
 
 ##### PARSE INPUT #####
 
-my $usage = "\nThis script creates a directory structure for projects from those in OTP\n\n\t $0 -input_dir /icgc/dkfzlsdf/project/hipo/hipo_XXX -out_dir /icgc/dkfzlsdf/analysis/hipo/hipo_XXX [-help]\n\n";
+my $usage = "\nThis script creates a directory structure for projects from those in OTP\n\n\t $0 -input_dir /icgc/dkfzlsdf/project/hipo/hipo_XXX -output_dir /icgc/dkfzlsdf/analysis/hipo/hipo_XXX [-pids \"HXXX-ABCD,HXXX-EFGH\"] [help]\n\n";
 
 my $project_dir;
 my $out_dir;
+my $pid_string;
+my @pid_string_split;
 my $help;
 
 GetOptions('input_dir=s'  => \$project_dir,
            'output_dir=s' => \$out_dir,
+           'pids=s'       => \$pid_string,
            'help'         => \$help);    
 
 if ($help){
@@ -61,6 +83,18 @@ if ($help){
 if (!(defined $project_dir) || !(defined $out_dir)){
   print "ERROR: You need to define an input_dir and an output_dir!\n$usage";
   exit;
+}
+
+if (defined $pid_string){
+  print "\#PID list defined: \"$pid_string\"\n";
+  @pid_string_split = split ",", $pid_string;
+  foreach my $pid (@pid_string_split){
+    print "\#PID:$pid\n";
+  }
+  
+}
+else{
+  print "\#WANRING: no pids defined - will run on all pids\n";
 }
 
 ##### FOLDER INFORMATION #####
@@ -100,6 +134,7 @@ foreach my $array_type (@array_types){
   print "mkdir $out_dir/$array_type_array/processing_scripts\n";
   print "mkdir $out_dir/$array_type_array/results_per_pid\n";
   print "mkdir $out_dir/$array_type_array/cohort_analysis\n";
+  print "mkdir $out_dir/$array_type_array/otp_output_QC\n";
 }
 
 foreach my $seq_type (@seq_types){
@@ -109,6 +144,7 @@ foreach my $seq_type (@seq_types){
   print "mkdir $out_dir/$seq_type/processing_scripts\n";
   print "mkdir $out_dir/$seq_type/results_per_pid\n";
   print "mkdir $out_dir/$seq_type/cohort_analysis\n";
+  print "mkdir $out_dir/$seq_type/otp_output_QC\n";
 }
 
 ##### CREATE ARRAY SUBDIRS/FILES #####
@@ -130,6 +166,7 @@ foreach my $seq_type (@seq_types){
   chomp ($seq_type);
   next if ($seq_type eq "[none]");
   my @pids = `ls $project_dir/sequencing/$seq_type/view-by-pid`;
+  @pids = @pid_string_split if defined ($pid_string);
   foreach my $pid (@pids){
     chomp $pid;
     print "\n\#PROCESSING $seq_type $pid\n\n";
@@ -193,22 +230,66 @@ foreach my $seq_type (@seq_types){
         }
       }
 
-      # LINK SNV FILES
- 
-      if (-e "$project_dir/sequencing/$seq_type/view-by-pid/$pid/snv_results"){
-        print "\n\# SOFTLINKG SNV FILES FOR $pid\n";
-        my @snv_comparisons = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/snv_results/*/`;
-        foreach my $snv_comparison (@snv_comparisons){
-          chomp ($snv_comparison);
-          my @snv_files = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/snv_results/*/$snv_comparison`;
-          print "mkdir $out_dir/$seq_type/results_per_pid/$pid/mpileup_"."$snv_comparison"."\n";
-          foreach my $snv_file (@snv_files){
-            chomp ($snv_file);
-            print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/snv_results/paired/$snv_comparison/$snv_file $out_dir/$seq_type/results_per_pid/$pid/mpileup_"."$snv_comparison"."\n";
+      my %wgs_analysis_types;
+      $wgs_analysis_types{"snv_results"}="mpileup_";
+      $wgs_analysis_types{"sv_results"}="SOPHIA_";
+      $wgs_analysis_types{"indel_results"}="platypus_indel_";
+      $wgs_analysis_types{"cnv_results"}="ACEseq_";
+
+      foreach my $wgs_analysis_type (keys %wgs_analysis_types){
+        print "\n\# Looking for $wgs_analysis_type for $pid WGS...\n";
+        if (-e "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type"){
+          print "\n\# SOFTLINKG SNV FILES FOR $pid\n";
+          my @comparisons = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type/paired/`;
+          foreach my $comparison (@comparisons){
+            chomp ($comparison);
+            my $res_folder = `ls -tr $project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type/paired/$comparison | tail -n 1`;
+            chomp($res_folder);
+            my @files = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type/paired/$comparison/$res_folder/`;
+            print "mkdir $out_dir/$seq_type/results_per_pid/$pid/$wgs_analysis_types{$wgs_analysis_type}"."$comparison"."\n";
+            foreach my $file (@files){
+              chomp ($file);
+              print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$wgs_analysis_type/paired/$comparison/$res_folder/$file $out_dir/$seq_type/results_per_pid/$pid/$wgs_analysis_types{$wgs_analysis_type}$comparison"."\n";
+            }
           }
-          if (scalar @snv_comparisons == 1){
-          print "ln -s mpileup_"."$snv_comparison $out_dir/$seq_type/results_per_pid/$pid/mpileup\n";
-          }        
+        }
+      }
+    } 
+
+    # RNASEQ
+
+    elsif ($seq_type eq "rna_sequencing"){
+      # /icgc/dkfzlsdf/project/hipo2/hipo_K20K/sequencing/rna_sequencing/view-by-pid/K20K-7FN3KK/patient-derived-culture1/paired/merged-alignment/
+      my @tissues = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid`;
+      foreach my $tissue (@tissues){
+        # ALIGNMENT
+        chomp $tissue;
+        print "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/\n";
+        if (-e "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/"){
+          print "mkdir $out_dir/$seq_type/results_per_pid/$pid/alignment\n";
+          my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment | grep $pid`;
+          foreach my $file (@files){
+            chomp $file;
+            print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/$file $out_dir/$seq_type/results_per_pid/$pid/alignment/$file\n";
+          }
+
+          #OTHER RNASEQ ANALYSIS
+          my @directories =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment | grep -v $pid`;
+          foreach my $directory (@directories){
+            chomp $directory;
+            print "\n\#MAKING $directory SUBDIR...\n";
+            print "mkdir $out_dir/$seq_type/results_per_pid/$pid/$directory\n";
+            my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/$directory`;
+            foreach my $file (@files){
+              chomp $file;
+              if ($directory eq "qualitycontrol") {
+                print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/$directory/$file $out_dir/$seq_type/results_per_pid/$pid/$directory/$tissue"."_"."$pid"."_"."$file\n";
+              }
+              else {
+                print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/$directory/$file $out_dir/$seq_type/results_per_pid/$pid/$directory/$file\n";
+              }
+            }
+          }
         }
       }
     }
@@ -218,7 +299,7 @@ foreach my $seq_type (@seq_types){
     }
 
     else {
-      
+     
       print "\n\# SOFTLINKING $seq_type QC FOR $pid\n";
  
       print "mkdir $out_dir/$seq_type/results_per_pid/$pid/qualitycontrol\n";
