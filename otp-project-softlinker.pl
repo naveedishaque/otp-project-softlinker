@@ -315,8 +315,8 @@ foreach my $seq_type (@seq_types){
           }
           
           print "mkdir $out_dir/$seq_type/results_per_pid/$pid/methylation\n";
-          my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/methylation/merged/`;
-          foreach my $file (@files){
+          my @files2 =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/methylation/merged/`;
+          foreach my $file (@files2){
             chomp $file;
             print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/methylation/merged/$file $out_dir/$seq_type/results_per_pid/$pid/methylation/$file\n";
           }
