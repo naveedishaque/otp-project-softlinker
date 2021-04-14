@@ -308,7 +308,7 @@ foreach my $seq_type (@seq_types){
         print "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/\n";
         if (-e "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/"){
           print "mkdir $out_dir/$seq_type/results_per_pid/$pid/alignment\n";
-          my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment | grep 'bam\|metadataTable.tsv'`;
+          my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment | grep 'bam\\|metadataTable.tsv'`;
           foreach my $file (@files){
             chomp $file;
             print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/$file $out_dir/$seq_type/results_per_pid/$pid/alignment/$file\n";
