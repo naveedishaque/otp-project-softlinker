@@ -295,6 +295,37 @@ foreach my $seq_type (@seq_types){
         }
       }
     }
+    
+    ###############################################################################
+    
+    
+    elsif ($seq_type eq "whole_genome_bisulfite_sequencing"){
+      # /icgc/dkfzlsdf/project/hipo2/hipo_K20K/sequencing/rna_sequencing/view-by-pid/K20K-7FN3KK/patient-derived-culture1/paired/merged-alignment/
+      my @tissues = `ls $project_dir/sequencing/$seq_type/view-by-pid/$pid`;
+      foreach my $tissue (@tissues){
+        # ALIGNMENT
+        chomp $tissue;
+        print "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/\n";
+        if (-e "$project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/"){
+          print "mkdir $out_dir/$seq_type/results_per_pid/$pid/alignment\n";
+          my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment | grep 'bam\|metadataTable.tsv'`;
+          foreach my $file (@files){
+            chomp $file;
+            print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/$file $out_dir/$seq_type/results_per_pid/$pid/alignment/$file\n";
+          }
+          
+          print "mkdir $out_dir/$seq_type/results_per_pid/$pid/methylation\n";
+          my @files =`ls $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/methylation/merged/`;
+          foreach my $file (@files){
+            chomp $file;
+            print "ln -s $project_dir/sequencing/$seq_type/view-by-pid/$pid/$tissue/paired/merged-alignment/methylation/merged/$file $out_dir/$seq_type/results_per_pid/$pid/methylation/$file\n";
+          }
+        }
+      }
+    }
+    
+    
+    ###############################################################################
 
     elsif ($seq_type eq "SOMETHING PARSEABLE IN THE FUTURE"){
       # DO MORE PARSING
